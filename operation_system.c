@@ -3,8 +3,10 @@
 #include <string.h>
 #include <limits.h>
 
-#define MAX 256
+#define MAX 256 // Maximum number of processes
 
+
+// Define a process structure for processes.txt, to read processes Id, arrival time, burst time and priority.
 struct Process {
     int pid;
     int arrival;
@@ -13,6 +15,7 @@ struct Process {
 };
 
 /* ---------- printing helpers ---------- */
+// Print usage/help information for the program
 static void print_usage(const char *prog) {
     printf("Usage: %s [-h] [-a {fcfs|sjf|both}] [-f <input_file>]\n", prog);
     printf("  -h, --help          Show this help and exit\n");
@@ -21,6 +24,7 @@ static void print_usage(const char *prog) {
     printf("  -f <file>           Input file path (default: processes.txt)\n");
 }
 
+// print a simple Gantt chart showing execution order and idle times
 static void print_gantt(int seg_pid[], int seg_s[], int seg_e[], int m) {
     if (m <= 0) return;
     printf("\nGantt chart:\n| ");
@@ -29,6 +33,8 @@ static void print_gantt(int seg_pid[], int seg_s[], int seg_e[], int m) {
         else printf("P%d | ", seg_pid[i]);
     }
     printf("\n");
+
+    // print timeline values under the chart
     printf("%d", seg_s[0]);
     for (int i = 0; i < m; ++i) printf("   %d", seg_e[i]);
     printf("\n");
@@ -37,8 +43,9 @@ static void print_gantt(int seg_pid[], int seg_s[], int seg_e[], int m) {
 /* ---------- FCFS ---------- */
 static void fcfs(struct Process procs[], int n) {
     struct Process a[MAX];
-    for (int i = 0; i < n; ++i) a[i] = procs[i];
+    for (int i = 0; i < n; ++i) a[i] = procs[i]; // Copy input array
 
+    // sort by arrival time
     for (int i = 0; i < n - 1; ++i)
         for (int j = 0; j < n - i - 1; ++j)
             if (a[j].arrival > a[j+1].arrival ||
@@ -46,24 +53,28 @@ static void fcfs(struct Process procs[], int n) {
                 struct Process t = a[j]; a[j] = a[j+1]; a[j+1] = t;
             }
 
-    int t = 0, C[MAX], WT[MAX], TAT[MAX];
-    int seg_pid[MAX*2], seg_s[MAX*2], seg_e[MAX*2], m = 0;
-    int order[MAX], ordn = 0;
+    int t = 0, C[MAX], WT[MAX], TAT[MAX]; // current time, completion, waiting, turnaround
+    int seg_pid[MAX*2], seg_s[MAX*2], seg_e[MAX*2], m = 0; // Gantt chart arrays 
+    int order[MAX], ordn = 0;  // execution order for printing table 
 
     printf("\n----- FCFS -----\nprocessing sequence:\n");
     for (int i = 0; i < n; ++i) {
-        if (t < a[i].arrival) { seg_pid[m]=-1; seg_s[m]=t; seg_e[m]=a[i].arrival; m++; t=a[i].arrival; }
+        
+	if (t < a[i].arrival) { seg_pid[m]=-1; seg_s[m]=t; seg_e[m]=a[i].arrival; m++; t=a[i].arrival; }
         int start = t;
-        t += a[i].burst;
-        C[i]   = t;
-        WT[i]  = start - a[i].arrival;
-        TAT[i] = C[i] - a[i].arrival;
-
+        t += a[i].burst; // process exection
+	
+        C[i]   = t;                    // completion time 
+        WT[i]  = start - a[i].arrival; // waiting time
+        TAT[i] = C[i] - a[i].arrival;  // turnaround time 
+	
+	// Save execution segment for Gantt chart 
         seg_pid[m]=a[i].pid; seg_s[m]=start; seg_e[m]=t; m++;
 	order[ordn++] = i;
         printf("P%d%s", a[i].pid, (i==n-1? "\n":" -> "));
     }
-
+	
+    // print results table
     printf("PID\tArr\tBurst\tWT\tTAT\tC\n");
     double sumWT=0, sumTAT=0;
     for (int k = 0; k < ordn; ++k) {
@@ -73,16 +84,16 @@ static void fcfs(struct Process procs[], int n) {
         sumWT += WT[i]; sumTAT += TAT[i];
     }
     printf("Avg WT=%.2f  Avg TAT=%.2f\n", sumWT/n, sumTAT/n);
-
+    // print Gantt chart
     print_gantt(seg_pid, seg_s, seg_e, m);
 }
 
 /* ---------- SJF (non-preemptive) ---------- */
 static void sjf(struct Process procs[], int n) {
     struct Process a[MAX];
-    for (int i = 0; i < n; ++i) a[i] = procs[i];
+    for (int i = 0; i < n; ++i) a[i] = procs[i]; // copy input array
 
-    int done[MAX]={0}, C[MAX], WT[MAX], TAT[MAX];
+    int done[MAX]={0}, C[MAX], WT[MAX], TAT[MAX]; // mark completed processes, and define WT, TAT 
     int finished=0, t=0;
     int seg_pid[MAX*2], seg_s[MAX*2], seg_e[MAX*2], m=0;
 
@@ -90,7 +101,8 @@ static void sjf(struct Process procs[], int n) {
     printf("\n----- SJF (non-preemptive) -----\nprocessing sequence:\n");
 
     while (finished < n) {
-        int pick = -1;
+        int pick = -1; // index of chosen process
+	// find the process with shortest burst among arrived & unfinished ones
         for (int i = 0; i < n; ++i) {
             if (done[i] || a[i].arrival > t) continue;
             if (pick == -1 ||
@@ -99,27 +111,30 @@ static void sjf(struct Process procs[], int n) {
                 (a[i].arrival < a[pick].arrival ||
                 (a[i].arrival == a[pick].arrival && a[i].pid < a[pick].pid))))
                 pick = i;
-        }
+        } 
+	// If no process is ready, fast-forward to next arrival 
         if (pick == -1) {
-            int soon = INT_MAX;
+            int soon = MAX;
             for (int i = 0; i < n; ++i)
                 if (!done[i] && a[i].arrival < soon) soon = a[i].arrival;
             seg_pid[m]=-1; seg_s[m]=t; seg_e[m]=soon; m++;
             t = soon;
             continue;
         }
+
+	// run the chosen process
         int start = t;
         t += a[pick].burst;
-        C[pick]   = t;
-        WT[pick]  = start - a[pick].arrival;
-        TAT[pick] = C[pick] - a[pick].arrival;
+        C[pick]   = t;				// completion time
+        WT[pick]  = start - a[pick].arrival;    // waiting time 
+        TAT[pick] = C[pick] - a[pick].arrival;  // turnaround time 
         done[pick]=1; finished++;
 
         seg_pid[m]=a[pick].pid; seg_s[m]=start; seg_e[m]=t; m++;
 	order[ordn++] = pick;
         printf("P%d%s", a[pick].pid, (finished==n? "\n":" -> "));
     }
-
+    // print results
     printf("PID\tArr\tBurst\tWT\tTAT\tC\n");
     double sumWT=0, sumTAT=0;
     for (int k = 0; k < ordn; ++k) {
@@ -134,6 +149,8 @@ static void sjf(struct Process procs[], int n) {
 }
 
 /* ---------- input ---------- */
+// read processes from a text file into an array
+// each valid line: pid arrival burst priority
 static int read_processes(const char *path, struct Process procs[], int *n) {
     FILE *fp = fopen(path, "r");
     if (!fp) return -1;
@@ -141,7 +158,8 @@ static int read_processes(const char *path, struct Process procs[], int *n) {
     int count = 0;
     char line[MAX];
     while (fgets(line, sizeof(line), fp)) {
-        char *p = line;
+        // skip whitespace, empty lines, and comments
+	char *p = line;
         while (*p && isspace((unsigned char)*p)) p++;
         if (*p=='\0' || *p=='#' || (p[0]=='/' && p[1]=='/')) continue;
 
@@ -175,20 +193,21 @@ int main(int argc, char *argv[]) {
             return 1;
         }
     }
-
+    
+    // read processes from file
     struct Process procs[MAX]; int n = 0;
     if (read_processes(file, procs, &n) != 0 || n == 0) {
         printf("Error: cannot read processes from '%s'\n", file);
         return 1;
     }
 
-    // print .txt content
+    // print .txt content -> input processes
     printf("Read %d processes from %s\n", n, file);
     printf("PID\tArrival\tBurst\tPriority\n");
     for (int i = 0; i < n; ++i)
         printf("%d\t%d\t%d\t%d\n", procs[i].pid, procs[i].arrival, procs[i].burst, procs[i].priority);
 
-    // function about alg
+    // function about alg, you can choose
     if (!strcmp(alg, "fcfs"))       fcfs(procs, n);
     else if (!strcmp(alg, "sjf"))   sjf(procs, n);
     else if (!strcmp(alg, "both")) { fcfs(procs, n); sjf(procs, n); }
