@@ -1,0 +1,6 @@
+Unknown or incomplete option: -
+Usage: ./operation_system [-h] [-a {fcfs|sjf|both}] [-f <input_file>]
+  -h, --help          Show this help and exit
+  -a <algo>           Scheduling algorithm to run (default: both)
+                      fcfs | sjf | both
+  -f <file>           Input file path (default: processes.txt)
