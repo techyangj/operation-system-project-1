@@ -45,10 +45,12 @@ Your program will parse files according to the logic in operation_system.c. If y
 
 Example (for reference; follow your actual parser):
 
-# PID  Arrival_Time  Burst_Time  Priority
+```
+PID  Arrival_Time  Burst_Time  Priority
 1    0             5           2
 2    2             3           1
 3    4             2           3
+```
 
 ## Program Output
 
@@ -58,7 +60,9 @@ Depending on the selected algorithm, the program typically prints:
 - Average waiting time and average turnaround time
 
 
-# Example:
+## Example:
+
+```
 ❯ ./operation_system -a fcfs
 
 Read 3 processes from processes.txt
@@ -80,6 +84,6 @@ Avg WT=2.33  Avg TAT=5.67
 Gantt chart:
 | P1 | P2 | P3 | 
 0   5   8   10
-
+```
 
 
